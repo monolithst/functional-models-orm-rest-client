@@ -9,9 +9,9 @@ A simple rest client for passing models from a front end to a backend, super sea
 
 ## A Simple Example (JS)
 ```
-const { TextProperty } from 'functional-models'
-const { orm } from 'functional-models-orm'
-const { datastoreProvider } from 'functional-models-orm-rest-client'
+const { TextProperty } = require('functional-models')
+const { orm } = require('functional-models-orm')
+const { datastoreProvider } = require('functional-models-orm-rest-client')
 
 // Step 1: Create the provider
 const restDatastoreProvider = datastoreProvider() // All defaults
@@ -21,6 +21,45 @@ const myOrm = orm({ datastoreProvider })
 
 // Step 3: Use the base model from the orm.
 const Cars = myOrm.BaseModel('Cars', {
+  properties: {
+    color: TextProperty({ required: true })
+  }
+})
+
+// Step 4: Use Models like normal 
+const instance1 = Cars.create({ id: 'black-car-id', color: 'black' })
+
+await instance1.save()
+// POST /api/cars/black-car   { "id": "black-car-id", "color": "black" }
+
+const instance2 = Cars.retrieve('black-car')
+// GET /api/cars/black-car/black-car-id   
+console.log(instance2) 
+/*
+{
+  id: 'black-car-id',
+  color: 'black',
+}
+*/
+```
+
+## A Simple TypeScript Example
+```
+import { TextProperty } from 'functional-models'
+import { orm } from 'functional-models-orm'
+import { datastoreProvider } from 'functional-models-orm-rest-client'
+
+// Step 1: Create the provider
+const restDatastoreProvider = datastoreProvider() // All defaults
+
+// Step 2: Create the orm with the provider
+const myOrm = orm({ datastoreProvider })
+
+// Step 3: Use the base model from the orm.
+type CarType = {
+  color: string,
+}
+const Cars = myOrm.BaseModel<CarType>('Cars', {
   properties: {
     color: TextProperty({ required: true })
   }
