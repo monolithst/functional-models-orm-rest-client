@@ -1,7 +1,7 @@
 {
-  "name": "functional-models-orm-rest-client",
-  "version": "1.0.0",
-  "description": "A functional-models-orm datastore provider that uses rest.",
+  "name": "functional-models-express",
+  "version": "1.0.1",
+  "description": "Reusable functionalities for creating api views for functional-models using express.",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
@@ -10,26 +10,27 @@
     "test:coverage": "nyc npm run test",
     "feature-tests": "./node_modules/.bin/cucumber-js --require features/stepDefinitions/*.ts --require-module ts-node/register -p default",
     "coverage": "nyc --all --reporter=lcov npm test",
-    "dist": "tsc -p ./tsconfig.build.json && cp package.json ./dist && cp README.md ./dist && cd dist && npm publish"
+    "build": "tsc -p ./tsconfig.build.json && cp package.json ./dist && cp README.md ./dist",
+    "dist": "npm run build && cd dist && npm publish"
   },
   "keywords": [
     "functional-models",
     "orm",
-    "rest"
+    "express"
   ],
   "author": "Mike Cornwell",
   "license": "GPLV3",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/monolithst/functional-models-orm-rest-client.git"
+    "url": "git+https://github.com/monolithst/functional-models-express.git"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
   },
   "bugs": {
-    "url": "https://github.com/monolithst/functional-models-orm-rest-client/issues"
+    "url": "https://github.com/monolithst/functional-models-express/issues"
   },
-  "homepage": "https://github.com/monolithst/functional-models-orm-rest-client#readme",
+  "homepage": "https://github.com/monolithst/functional-models-express#readme",
   "nyc": {
     "extends": "@istanbuljs/nyc-config-typescript",
     "check-coverage": true,
@@ -54,6 +55,7 @@
     "@types/async-lock": "^1.1.3",
     "@types/chai": "^4.2.22",
     "@types/chai-as-promised": "^7.1.4",
+    "@types/express": "^4.17.13",
     "@types/lodash": "^4.14.176",
     "@types/mocha": "^9.0.0",
     "@types/proxyquire": "^1.3.28",
@@ -77,7 +79,7 @@
     "typescript": "^4.4.4"
   },
   "dependencies": {
-    "axios": "^0.27.2",
+    "express": "^4.18.1",
     "functional-models": "^2.0.10",
     "functional-models-orm": "^2.0.18",
     "lodash": "^4.17.21"

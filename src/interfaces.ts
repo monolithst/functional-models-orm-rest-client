@@ -1,49 +1,17 @@
-import { FunctionalModel, PrimaryKeyType, Model } from 'functional-models/interfaces'
+type MaybePromise<T> = Promise<T>|T
+type ExpressRequestFunction = (req: any, res: any) => MaybePromise<void> 
 
-enum HttpMethod {
-  get='get',
-  post='post',
-  put='put',
-  delete='delete',
-  patch='patch',
+type ModelController = {
+  save: ExpressRequestFunction,
+  retrieve: ExpressRequestFunction,
+  delete: ExpressRequestFunction,
+  search: ExpressRequestFunction,
+  bulkInsert: ExpressRequestFunction,
+  count: ExpressRequestFunction,
 }
-
-type HttpClientInputs = {
-  method: HttpMethod,
-  url: string,
-  data?:Object,
-  headers?:Object
-}
-
-type HttpClient = <T>(inputs: HttpClientInputs) => Promise<T>
-
-type MaybePromise<T> = T|Promise<T>
-
-type UrlBuilder = {
-  buildModelUrl: <T extends FunctionalModel>(method: DatastoreMethod, model: Model<T>) => string,
-  buildModelInstanceUrl: <T extends FunctionalModel>(method: DatastoreMethod, model: Model<T>, id: PrimaryKeyType) => string,
-}
-
-enum DatastoreMethod {
-  save,
-  retrieve,
-  delete,
-  bulkInsert,
-  search,
-}
-
-type HttpMethodGetter = (datastoreMethod: DatastoreMethod) => HttpMethod
-
-type HttpHeaderGetter = () => Promise<Object>
-
 
 export {
-  HttpMethod,
-  HttpClientInputs,
-  HttpClient,
+  ModelController,
+  ExpressRequestFunction,
   MaybePromise,
-  UrlBuilder,
-  HttpMethodGetter,
-  DatastoreMethod,
-  HttpHeaderGetter,
 }
