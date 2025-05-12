@@ -5,10 +5,10 @@ import {
   standardUrlBuilder,
   standardHttpMethodGetter,
 } from '../../src/defaultFunctions'
-import { HttpMethod, DatastoreMethod } from '../../src/interfaces'
+import { HttpMethod, DatastoreMethod } from '../../src/types'
 import { assert } from 'chai'
 
-const TestModel = BaseModel('TestModel', { properties: {}})
+const TestModel = BaseModel('TestModel', { properties: {} })
 
 describe('/src/defaultFunctions.ts', () => {
   describe('#standardHeaderGetter()', () => {
@@ -22,19 +22,29 @@ describe('/src/defaultFunctions.ts', () => {
   describe('#standardUrlBuilder()', () => {
     describe('#buildModelUrl()', () => {
       it('should produce a url of /api/test-model for TestModel', () => {
-        const actual = standardUrlBuilder().buildModelUrl(DatastoreMethod.search, TestModel)
+        const actual = standardUrlBuilder().buildModelUrl(
+          DatastoreMethod.search,
+          TestModel
+        )
         const expected = '/api/test-model'
         assert.equal(actual, expected)
       })
       it('should produce a url of /api/test-model/insert for TestModel and bulkInsert', () => {
-        const actual = standardUrlBuilder().buildModelUrl(DatastoreMethod.bulkInsert, TestModel)
+        const actual = standardUrlBuilder().buildModelUrl(
+          DatastoreMethod.bulkInsert,
+          TestModel
+        )
         const expected = '/api/test-model/insert'
         assert.equal(actual, expected)
       })
     })
     describe('#buildModelInstanceUrl()', () => {
       it('should produce a url of /api/test-model/123 for TestModel and 123', () => {
-        const actual = standardUrlBuilder().buildModelInstanceUrl(DatastoreMethod.retrieve, TestModel, 123)
+        const actual = standardUrlBuilder().buildModelInstanceUrl(
+          DatastoreMethod.retrieve,
+          TestModel,
+          123
+        )
         const expected = '/api/test-model/123'
         assert.equal(actual, expected)
       })
@@ -71,8 +81,7 @@ describe('/src/defaultFunctions.ts', () => {
         // @ts-ignore
         const actual = standardHttpMethodGetter()('not-search')
         assert.fail('No exception thrown')
-      } catch {
-      }
+      } catch {}
     })
   })
   describe('#defaultInstance()', () => {
@@ -83,15 +92,15 @@ describe('/src/defaultFunctions.ts', () => {
       assert.equal(actual, expected)
     })
     it('should choose the value of 11 for the default, if null is provided', async () => {
-      const input = null 
+      const input = null
       const actual = defaultInstance(input, () => 11)
-      const expected = 11 
+      const expected = 11
       assert.equal(actual, expected)
     })
     it('should choose the value of 11 for the default, if undefined is provided', async () => {
-      const input = undefined 
+      const input = undefined
       const actual = defaultInstance(input, () => 11)
-      const expected = 11 
+      const expected = 11
       assert.equal(actual, expected)
     })
   })

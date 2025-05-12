@@ -6,8 +6,8 @@
 
 A simple rest client for passing models from a front end to a backend, super seamlessly.
 
-
 ## A Simple Example (JS)
+
 ```
 const { TextProperty } = require('functional-models')
 const { orm } = require('functional-models-orm')
@@ -26,15 +26,15 @@ const Cars = myOrm.BaseModel('Cars', {
   }
 })
 
-// Step 4: Use Models like normal 
+// Step 4: Use Models like normal
 const instance1 = Cars.create({ id: 'black-car-id', color: 'black' })
 
 await instance1.save()
 // POST /api/cars/black-car   { "id": "black-car-id", "color": "black" }
 
 const instance2 = Cars.retrieve('black-car')
-// GET /api/cars/black-car/black-car-id   
-console.log(instance2) 
+// GET /api/cars/black-car/black-car-id
+console.log(instance2)
 /*
 {
   id: 'black-car-id',
@@ -44,6 +44,7 @@ console.log(instance2)
 ```
 
 ## A Simple TypeScript Example
+
 ```
 import { TextProperty } from 'functional-models'
 import { orm } from 'functional-models-orm'
@@ -65,15 +66,15 @@ const Cars = myOrm.BaseModel<CarType>('Cars', {
   }
 })
 
-// Step 4: Use Models like normal 
+// Step 4: Use Models like normal
 const instance1 = Cars.create({ id: 'black-car-id', color: 'black' })
 
 await instance1.save()
 // POST /api/cars/black-car   { "id": "black-car-id", "color": "black" }
 
 const instance2 = Cars.retrieve('black-car')
-// GET /api/cars/black-car/black-car-id   
-console.log(instance2) 
+// GET /api/cars/black-car/black-car-id
+console.log(instance2)
 /*
 {
   id: 'black-car-id',
@@ -83,9 +84,11 @@ console.log(instance2)
 ```
 
 ## Authentication
+
 It is highly recommended that you use the input override for the httpHeaderGetter, in order to insert authentication.
 Creating your own method will allow you to insert JWT mechanics. This is an asynchronous function that is called. So if you
 need to login first, then set a header you can do so.
 
 ## Custom API
+
 You can customize how the api works. Take a look at the inputs/code for the datastoreProvider. You can change how the urls are built, which http methods are used, as well as how the headers are built.

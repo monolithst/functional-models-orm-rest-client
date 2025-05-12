@@ -2,8 +2,8 @@ import { assert } from 'chai'
 import { invoke } from 'lodash'
 import datastoreProvider from '../../src/datastoreProvider'
 import { TextProperty, BaseModel } from 'functional-models'
-import { Given, When, Then} from '@cucumber/cucumber'
-import sinon from 'sinon' 
+import { Given, When, Then } from '@cucumber/cucumber'
+import sinon from 'sinon'
 
 const mockHttpProvider = () => {
   const stub = sinon.stub()
@@ -11,10 +11,10 @@ const mockHttpProvider = () => {
   return stub
 }
 
-const DATA : {[s: string]: () => any} = {
+const DATA: { [s: string]: () => any } = {
   TEST_1_MODEL: () => ({
     id: 'my-id',
-    name: 'my-name'
+    name: 'my-name',
   }),
   TEST_1_MODEL_RESULTS: () => ({
     method: 'put',
@@ -24,10 +24,10 @@ const DATA : {[s: string]: () => any} = {
     },
     data: {
       id: 'my-id',
-      name: 'my-name'
-    }
+      name: 'my-name',
+    },
   }),
-  TEST_2: () => ([TestModel, 'my-id']),
+  TEST_2: () => [TestModel, 'my-id'],
   TEST_2_MODEL_RESULTS: () => ({
     method: 'get',
     url: '/api/test-model/my-id',
@@ -46,7 +46,7 @@ const DATA : {[s: string]: () => any} = {
       'Content-Type': 'application/json',
     },
   }),
-  TEST_4: () => ([TestModel, { dummy: 'query'}]),
+  TEST_4: () => [TestModel, { dummy: 'query' }],
   TEST_4_MODEL_RESULTS: () => ({
     method: 'post',
     url: '/api/test-model',
@@ -54,67 +54,92 @@ const DATA : {[s: string]: () => any} = {
       'Content-Type': 'application/json',
     },
     data: {
-      dummy: 'query'
-    }
+      dummy: 'query',
+    },
   }),
-  TEST_5: () => ([TestModel, [TestModel.create({
-    id: '1',
-    name: 'name-1',
-  }),TestModel.create({
-    id: '2',
-    name: 'name-2',
-  })]]),
+  TEST_5: () => [
+    TestModel,
+    [
+      TestModel.create({
+        id: '1',
+        name: 'name-1',
+      }),
+      TestModel.create({
+        id: '2',
+        name: 'name-2',
+      }),
+    ],
+  ],
   TEST_5_MODEL_RESULTS: () => ({
     method: 'post',
     url: '/api/test-model/insert',
     headers: {
       'Content-Type': 'application/json',
     },
-    data: [{
-      id: '1',
-      name: 'name-1',
-    }, {
-      id: '2',
-      name: 'name-2',
-    }]
+    data: [
+      {
+        id: '1',
+        name: 'name-1',
+      },
+      {
+        id: '2',
+        name: 'name-2',
+      },
+    ],
   }),
 }
 
 type TestModelType = {
-  name: string,
+  name: string
 }
 
 const TestModel = BaseModel<TestModelType>('TestModel', {
   properties: {
     name: TextProperty(),
-  }
+  },
 })
 
-Given('we create a mock http provider', function() {
+Given('we create a mock http provider', function () {
   this.httpProvider = mockHttpProvider()
 })
 
-Given('we use a datastoreProvider with the standard functions and httpProvider', function() {
-  this.datastoreProvider = datastoreProvider({
-    httpProvider: this.httpProvider,
-  })
-})
+Given(
+  'we use a datastoreProvider with the standard functions and httpProvider',
+  function () {
+    this.datastoreProvider = datastoreProvider({
+      httpProvider: this.httpProvider,
+    })
+  }
+)
 
-When('we create an instance of TestModel with {word} data', function(key) {
+When('we create an instance of TestModel with {word} data', function (key) {
   this.modelInstance = TestModel.create(DATA[key]())
 })
 
-When('we call {string} on the datastoreProvider with the model', async function(path) {
-  this.results = await invoke(this.datastoreProvider, path, this.modelInstance)
-})
+When(
+  'we call {string} on the datastoreProvider with the model',
+  async function (path) {
+    this.results = await invoke(
+      this.datastoreProvider,
+      path,
+      this.modelInstance
+    )
+  }
+)
 
-When('we call {string} on the datastoreProvider with {word}', async function(path, key) {
-  const data = DATA[key]()
-  this.results = await invoke(this.datastoreProvider, path, ...data)
-})
+When(
+  'we call {string} on the datastoreProvider with {word}',
+  async function (path, key) {
+    const data = DATA[key]()
+    this.results = await invoke(this.datastoreProvider, path, ...data)
+  }
+)
 
-Then('the http information passed to the httpProvider matches {word}', function(key) {
-  const expected = DATA[key]()
-  const actual = this.httpProvider.getCall(0).args[0]
-  assert.deepEqual(actual, expected)
-})
+Then(
+  'the http information passed to the httpProvider matches {word}',
+  function (key) {
+    const expected = DATA[key]()
+    const actual = this.httpProvider.getCall(0).args[0]
+    assert.deepEqual(actual, expected)
+  }
+)

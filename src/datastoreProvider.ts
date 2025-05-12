@@ -1,130 +1,214 @@
-import { DatastoreProvider, OrmModelInstance, OrmQuery, DatastoreSearchResult, OrmModel } from 'functional-models-orm/interfaces'
-import { ModelInstance, FunctionalModel, Model, PrimaryKeyType, ModelInstanceInputData } from 'functional-models/interfaces'
-import { axiosInstance } from './axios'
-import { 
-  HttpClient,
-  HttpMethod,
-  UrlBuilder,
-  HttpMethodGetter,
-  DatastoreMethod,
-  HttpHeaderGetter,
-} from './interfaces'
 import {
-  defaultInstance,
-  standardHeaderGetter,
-  standardUrlBuilder,
-  standardHttpMethodGetter,
-} from './defaultFunctions'
-import { mapAsync } from './utils'
+  ModelInstance,
+  ModelType,
+  PrimaryKeyType,
+  ApiMethod,
+  DataDescription,
+} from 'functional-models'
+import { axiosInstance } from './axios'
+import { HttpClient, RestClientProviderConfig } from './types'
 
+const datastoreProvider = (
+  config: RestClientProviderConfig = { baseUrl: { default: '' } }
+) => {
+  // Use provided httpClient or default to axiosInstance
+  const httpClient: HttpClient =
+    typeof axiosInstance === 'function' ? axiosInstance() : axiosInstance
+  const finalHttpClient: HttpClient = config.httpClient || httpClient
 
-const datastoreProvider = (inputs: {
-  httpProvider?: HttpClient,
-  urlBuilder?: UrlBuilder,
-  httpMethodGetter?: HttpMethodGetter,
-  httpHeaderGetter?: HttpHeaderGetter,
-}={}) : DatastoreProvider => {
-  const {
-    httpProvider = defaultInstance<HttpClient>(inputs.httpProvider, axiosInstance) as HttpClient,
-    urlBuilder = defaultInstance<UrlBuilder>(inputs.urlBuilder, standardUrlBuilder) as UrlBuilder,
-    httpMethodGetter = defaultInstance<HttpMethodGetter>(inputs.httpMethodGetter, standardHttpMethodGetter) as HttpMethodGetter,
-    httpHeaderGetter = defaultInstance<HttpHeaderGetter>(inputs.httpHeaderGetter, standardHeaderGetter) as HttpHeaderGetter,
-  } = inputs
-
-  const save = <T extends FunctionalModel, TModel extends Model<T>>(
-    instance: ModelInstance<T, TModel>
-  ): Promise<ModelInstanceInputData<T>> => {
-    return Promise.resolve()
-      .then(async () => {
-        const url = urlBuilder.buildModelInstanceUrl(DatastoreMethod.save, instance.getModel(), instance.getPrimaryKey())
-        const method = httpMethodGetter(DatastoreMethod.save)
-        const headers = await httpHeaderGetter()
-        const data = await instance.toObj()
-        return httpProvider({
-          url,
-          method,
-          headers,
-          data,
-        }) as Promise<ModelInstanceInputData<T>>
-      })
+  // Utility to resolve baseUrl for a given model
+  const resolveBaseUrl = (
+    config: RestClientProviderConfig,
+    namespace: string,
+    modelName: string
+  ): string => {
+    if (config.baseUrl) {
+      if (config.baseUrl[`${namespace}/${modelName}`]) {
+        return config.baseUrl[`${namespace}/${modelName}`]
+      }
+      if (config.baseUrl[namespace]) {
+        return config.baseUrl[namespace]
+      }
+      if (config.baseUrl.default) {
+        return config.baseUrl.default
+      }
+    }
+    return ''
   }
 
-  const bulkInsert = async <T extends FunctionalModel, TModel extends Model<T>>(
-    model: TModel,
-    instances: readonly ModelInstance<T, TModel>[]
+  // Utility to resolve endpoint and method for a given model and ApiMethod
+  const resolveApiInfo = (
+    model: any,
+    apiMethod: ApiMethod,
+    config: RestClientProviderConfig
   ) => {
-    return Promise.resolve()
-      .then(async () => {
-        const url = urlBuilder.buildModelUrl(DatastoreMethod.bulkInsert, model)
-        const method = httpMethodGetter(DatastoreMethod.bulkInsert)
-        const headers = await httpHeaderGetter()
-        const data = await mapAsync(instances, instance => instance.toObj()) 
-        return httpProvider({
-          url,
-          method,
-          headers,
-          data,
-        }) as Promise<void>
-      })
+    const apiInfo = model.getApiInfo()
+    const restInfo = apiInfo.rest[apiMethod]
+    const namespace = model.getModelDefinition().namespace
+    const pluralName = model.getModelDefinition().pluralName
+    const baseUrl = resolveBaseUrl(config, namespace, pluralName)
+    const url = baseUrl.replace(/\/$/u, '') + restInfo.endpoint // Ensure no double slashes
+    return {
+      url,
+      method: restInfo.method,
+      security: restInfo.security,
+    }
   }
 
-  const deleteObj = <T extends FunctionalModel, TModel extends Model<T>>(
-    instance: ModelInstance<T, TModel>
-  ) => {
-    return Promise.resolve()
-      .then(async () => {
-        const url = urlBuilder.buildModelInstanceUrl(DatastoreMethod.delete, instance.getModel(), instance.getPrimaryKey())
-        const method = httpMethodGetter(DatastoreMethod.delete)
-        const headers = await httpHeaderGetter()
-        return httpProvider({
-          url,
-          method,
-          headers,
-        }) as Promise<void>
+  // Helper to get headers (credentials)
+  const getHeaders = async (model: any) => {
+    const namespace = model.getModelDefinition().namespace
+    const modelName = model.getModelDefinition().pluralName
+    return typeof config.credentials === 'function'
+      ? config.credentials({ namespace, modelName })
+      : typeof config.credentials === 'object' && config.credentials
+        ? {
+            ...(config.credentials.apiKey
+              ? { 'x-api-key': config.credentials.apiKey }
+              : {}),
+            ...(config.credentials.oauthToken
+              ? { Authorization: `Bearer ${config.credentials.oauthToken}` }
+              : {}),
+          }
+        : {}
+  }
+
+  // Helper to handle hooks and mock mode
+  const handleRequest = async (request: any) => {
+    if (config.beforeRequest) {
+      request = await config.beforeRequest(request)
+    }
+    if (config.mockMode && config.mockHandler) {
+      const response = await config.mockHandler(request)
+      return config.afterResponse ? config.afterResponse(response) : response
+    }
+    const response = await finalHttpClient(request)
+    return config.afterResponse ? config.afterResponse(response) : response
+  }
+
+  // CREATE (single)
+  const save = async <T extends DataDescription>(instance: ModelInstance<T>) =>
+    handleRequest({
+      ...(() => {
+        const model = instance.getModel()
+        const { url, method } = resolveApiInfo(model, ApiMethod.create, config)
+        return { url, method, headers: undefined, data: undefined, model }
+      })(),
+      headers: await getHeaders(instance.getModel()),
+      data: await instance.toObj(),
     })
-  }
 
-  const search = <T extends FunctionalModel>(
-    model: Model<T>,
-    ormQuery: OrmQuery
-  ) => {
-    return Promise.resolve()
-      .then(async () => {
-        const url = urlBuilder.buildModelUrl(DatastoreMethod.search, model)
-        const method = httpMethodGetter(DatastoreMethod.search)
-        const headers = await httpHeaderGetter()
-        return httpProvider({
-          url,
-          method,
-          headers,
-          data: ormQuery,
-        }) as Promise<DatastoreSearchResult<T>>
-      })
-  }
-
-  const retrieve = <T extends FunctionalModel>(
-    model: Model<T>,
-    id: PrimaryKeyType
-  ) => {
-    return Promise.resolve()
-      .then(async () => {
-        const url = urlBuilder.buildModelInstanceUrl(DatastoreMethod.retrieve, model, id)
-        const method = httpMethodGetter(DatastoreMethod.retrieve)
-        const headers = await httpHeaderGetter()
-        return httpProvider({
-          url,
-          method,
-          headers,
-        }) as Promise<ModelInstanceInputData<T>>
+  // BULK INSERT
+  const bulkInsert = async <T extends DataDescription>(
+    model: any,
+    instances: readonly ModelInstance<T>[]
+  ) =>
+    handleRequest({
+      ...(() => {
+        const { url, method } = resolveApiInfo(model, ApiMethod.create, config)
+        return { url, method, headers: undefined, data: undefined }
+      })(),
+      headers: await getHeaders(model),
+      data: await Promise.all(instances.map(i => i.toObj())),
     })
-  }
+
+  // RETRIEVE
+  const retrieve = async (model: any, id: PrimaryKeyType) =>
+    handleRequest({
+      ...(() => {
+        const { url, method } = resolveApiInfo(
+          model,
+          ApiMethod.retrieve,
+          config
+        )
+        return {
+          url: url.replace(':id', encodeURIComponent(String(id))),
+          method,
+          headers: undefined,
+        }
+      })(),
+      headers: await getHeaders(model),
+    })
+
+  // UPDATE
+  const update = async <T extends DataDescription>(
+    instance: ModelInstance<T>
+  ) =>
+    handleRequest({
+      ...(() => {
+        const model = instance.getModel()
+        const { url, method } = resolveApiInfo(model, ApiMethod.update, config)
+        const id = instance.getPrimaryKey()
+        return {
+          url: url.replace(':id', encodeURIComponent(String(id))),
+          method,
+          headers: undefined,
+          data: undefined,
+        }
+      })(),
+      headers: await getHeaders(instance.getModel()),
+      data: await instance.toObj(),
+    })
+
+  // DELETE (single)
+  const deleteObj = async <T extends DataDescription>(
+    instance: ModelInstance<T>
+  ) =>
+    handleRequest({
+      ...(() => {
+        const model = instance.getModel()
+        const { url, method } = resolveApiInfo(model, ApiMethod.delete, config)
+        const id = instance.getPrimaryKey()
+        return {
+          url: url.replace(':id', encodeURIComponent(String(id))),
+          method,
+          headers: undefined,
+        }
+      })(),
+      headers: await getHeaders(instance.getModel()),
+    })
+
+  // SEARCH
+  const search = async <T extends DataDescription>(
+    model: ModelType<T>,
+    ormQuery: any
+  ) =>
+    handleRequest({
+      ...(() => {
+        const { url, method } = resolveApiInfo(model, ApiMethod.search, config)
+        return { url, method, headers: undefined, data: undefined }
+      })(),
+      headers: await getHeaders(model),
+      data: ormQuery,
+    })
+
+  // BULK DELETE (custom, not in functional-models spec)
+  const bulkDelete = async <T extends DataDescription>(
+    model: ModelType<T>,
+    ids: readonly PrimaryKeyType[]
+  ) =>
+    handleRequest({
+      ...(() => {
+        const { url, method } = resolveApiInfo(model, ApiMethod.delete, config)
+        return {
+          url: url.replace(/\/:id$/u, ''),
+          method,
+          headers: undefined,
+          data: undefined,
+        }
+      })(),
+      headers: await getHeaders(model),
+      data: ids,
+    })
 
   return {
-    bulkInsert,
-    search,
-    retrieve,
     save,
+    bulkInsert,
+    retrieve,
+    update,
     delete: deleteObj,
+    search,
+    bulkDelete,
   }
 }
 

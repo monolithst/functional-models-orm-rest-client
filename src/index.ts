@@ -1,4 +1,3 @@
 import datastoreProvider from './datastoreProvider'
-export {
-  datastoreProvider
-}
+
+export { datastoreProvider }
