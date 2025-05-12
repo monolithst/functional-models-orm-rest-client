@@ -35,6 +35,12 @@ export type RestClientProviderConfig = Readonly<{
         namespace: string
         modelName: string
       }) => Promise<Record<string, string>>)
+  oauth2?: {
+    tokenUrl: string
+    clientId: string
+    clientSecret: string
+    // For future extensibility: audience?: string; extraParams?: Record<string, string>
+  }
   mockMode?: boolean
   mockHandler?: (request: any) => Promise<any>
   beforeRequest?: (request: any) => Promise<any> | any

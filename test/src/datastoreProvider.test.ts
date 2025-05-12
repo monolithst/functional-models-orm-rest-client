@@ -422,4 +422,94 @@ describe('/src/datastoreProvider.ts', () => {
     const call = httpClient.getCall(0).args[0]
     expect(call.url).to.equal('/mock-model')
   })
+
+  it('should acquire OAuth2 token and inject Authorization header', async () => {
+    let tokenCallCount = 0
+    const httpClient = sinon.stub()
+    // First call is token endpoint, second is actual API call
+    httpClient
+      .onFirstCall()
+      .resolves({ access_token: 'tok123', expires_in: 3600 })
+    httpClient.onSecondCall().resolves('ok')
+    const provider = datastoreProvider({
+      httpClient,
+      oauth2: {
+        tokenUrl: 'https://auth.example.com/token',
+        clientId: 'cid',
+        clientSecret: 'csecret',
+      },
+    })
+    const result = await provider.save(mockInstance as any)
+    expect(httpClient.callCount).to.equal(2)
+    // First call: token endpoint
+    const tokenReq = httpClient.getCall(0).args[0]
+    expect(tokenReq.url).to.equal('https://auth.example.com/token')
+    expect(tokenReq.method).to.equal('post')
+    // Second call: actual API call
+    const apiReq = httpClient.getCall(1).args[0]
+    expect(apiReq.headers.Authorization).to.equal('Bearer tok123')
+    expect(result).to.equal('ok')
+  })
+
+  it('should refresh OAuth2 token if expired', async () => {
+    let now = Date.now()
+    sinon.useFakeTimers({ now })
+    const httpClient = sinon.stub()
+    // First token, then API call, then new token, then API call
+    httpClient.onCall(0).resolves({ access_token: 'tokA', expires_in: 1 }) // expires in 1s
+    httpClient.onCall(1).resolves('okA')
+    httpClient.onCall(2).resolves({ access_token: 'tokB', expires_in: 3600 })
+    httpClient.onCall(3).resolves('okB')
+    const provider = datastoreProvider({
+      httpClient,
+      oauth2: {
+        tokenUrl: 'https://auth.example.com/token',
+        clientId: 'cid',
+        clientSecret: 'csecret',
+      },
+    })
+    // First call, token A
+    const resultA = await provider.save(mockInstance as any)
+    expect(httpClient.callCount).to.equal(2)
+    expect(httpClient.getCall(1).args[0].headers.Authorization).to.equal(
+      'Bearer tokA'
+    )
+    // Advance time past expiry
+    sinon.clock.tick(2000)
+    // Second call, should get new token B
+    const resultB = await provider.save(mockInstance as any)
+    expect(httpClient.callCount).to.equal(4)
+    expect(httpClient.getCall(3).args[0].headers.Authorization).to.equal(
+      'Bearer tokB'
+    )
+    expect(resultA).to.equal('okA')
+    expect(resultB).to.equal('okB')
+    sinon.restore()
+  })
+
+  it('should refresh token and retry on 401', async () => {
+    const httpClient = sinon.stub()
+    // Token, API call (401), new token, retry (200)
+    httpClient.onCall(0).resolves({ access_token: 'tok1', expires_in: 3600 })
+    httpClient.onCall(1).rejects({ response: { status: 401 } })
+    httpClient.onCall(2).resolves({ access_token: 'tok2', expires_in: 3600 })
+    httpClient.onCall(3).resolves('ok2')
+    const provider = datastoreProvider({
+      httpClient,
+      oauth2: {
+        tokenUrl: 'https://auth.example.com/token',
+        clientId: 'cid',
+        clientSecret: 'csecret',
+      },
+    })
+    const result = await provider.save(mockInstance as any)
+    expect(httpClient.callCount).to.equal(4)
+    expect(httpClient.getCall(1).args[0].headers.Authorization).to.equal(
+      'Bearer tok1'
+    )
+    expect(httpClient.getCall(3).args[0].headers.Authorization).to.equal(
+      'Bearer tok2'
+    )
+    expect(result).to.equal('ok2')
+  })
 })
